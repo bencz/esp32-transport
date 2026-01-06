@@ -41,7 +41,12 @@ esp32_transport/
 │   ├── transport_usb.c       # USB CDC implementation
 │   └── transport_manager.c   # Manager implementation
 ├── examples/
-│   └── main.c                # Usage examples
+│   ├── example_bt_spp.c      # Bluetooth SPP example
+│   ├── example_ble.c         # BLE example
+│   ├── example_wifi_tcp.c    # WiFi TCP example
+│   ├── example_uart.c        # UART example
+│   ├── example_usb.c         # USB CDC example
+│   └── example_multi_transport.c  # Multi-transport gateway
 ├── CMakeLists.txt
 └── README.md
 ```
@@ -285,7 +290,7 @@ transport_deinit(&usb->base);
 usb_transport_destroy(usb);
 ```
 
-### Using the Manager
+### Using the Manager (Single Active Transport)
 
 ```c
 #include "transport_manager.h"
@@ -313,6 +318,79 @@ transport_manager_set_active(h_spp);
 transport_stats_t stats;
 transport_manager_get_stats(h_ble, &stats);
 printf("Bytes sent: %llu\n", stats.bytes_sent);
+```
+
+### Simultaneous Multi-Transport Usage
+
+The manager supports using **all transports simultaneously** - perfect for gateways
+that receive data from one interface and forward to others.
+
+```c
+// Read/write to specific transports by handle
+transport_manager_write_handle(h_tcp, data, len, NULL, 1000);
+transport_manager_read_handle(h_spp, buffer, len, &read, 1000);
+
+// Broadcast to ALL connected transports
+size_t sent = transport_manager_broadcast(data, len, TRANSPORT_HANDLE_INVALID, 1000);
+
+// Broadcast to all EXCEPT the source (for forwarding)
+transport_manager_broadcast(data, len, source_handle, 1000);
+
+// Read from ANY transport that has data
+transport_handle_t source;
+transport_manager_read_any(buffer, len, &read, &source, 1000);
+printf("Data from: %d\n", source);
+
+// Forward data from one transport to another (or to all)
+transport_manager_forward(h_spp, h_tcp, buffer, sizeof(buffer), &forwarded, 1000);
+transport_manager_forward(h_spp, TRANSPORT_HANDLE_INVALID, buffer, sizeof(buffer), &forwarded, 1000);  // Broadcast
+
+// Poll all transports for available data
+transport_poll_result_t results[8];
+size_t count = transport_manager_poll(results, 8);
+for (size_t i = 0; i < count; i++) {
+    printf("Transport %d has %zu bytes\n", results[i].handle, results[i].bytes_available);
+}
+
+// Check connection status
+size_t connected = transport_manager_connected_count();
+bool is_conn = transport_manager_is_connected(h_ble);
+```
+
+### Gateway Example (Receive from any, forward to all)
+
+```c
+void gateway_task(void *pvParameters) {
+    uint8_t buffer[256];
+    size_t bytes_read;
+    transport_handle_t source;
+    
+    while (1) {
+        // Read from ANY transport
+        if (transport_manager_read_any(buffer, sizeof(buffer), &bytes_read, &source, 100) == TRANSPORT_OK) {
+            printf("Received %zu bytes from transport %d\n", bytes_read, source);
+            
+            // Forward to ALL OTHER transports
+            size_t sent = transport_manager_broadcast(buffer, bytes_read, source, 1000);
+            printf("Forwarded to %zu transports\n", sent);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+```
+
+### Global Data Callback
+
+```c
+// Called automatically when data arrives on ANY transport
+void on_data(transport_handle_t handle, const uint8_t *data, size_t len, void *user_data) {
+    printf("Transport %d received %zu bytes\n", handle, len);
+    // Auto-forward to all others
+    transport_manager_broadcast(data, len, handle, 1000);
+}
+
+// Register the callback
+transport_manager_set_data_callback(on_data, NULL);
 ```
 
 ## Events

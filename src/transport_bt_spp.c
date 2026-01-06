@@ -47,9 +47,17 @@ typedef struct {
 #define EVENT_DATA_READY    BIT3
 
 /**
- * @brief Global pointer to current transport (required for ESP-IDF callbacks)
+ * @brief Current transport instance pointer
+ * 
+ * Note: ESP-IDF's Bluetooth callbacks (esp_bt_gap_register_callback,
+ * esp_spp_register_callback) do not provide a user context parameter,
+ * so we must store the transport instance here to access it from callbacks.
+ * This limits the implementation to a single SPP transport instance at a time,
+ * which aligns with ESP-IDF's single Bluetooth stack limitation.
+ * 
+ * The pointer is set during init and cleared during deinit.
  */
-static bt_spp_transport_t *g_current_transport = NULL;
+static bt_spp_transport_t *s_transport_instance = NULL;
 
 /**
  * @brief Vtable function prototypes
@@ -107,13 +115,13 @@ static void gap_callback(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *par
             
         case ESP_BT_GAP_PIN_REQ_EVT:
             ESP_LOGI(TAG, "PIN request");
-            if (g_current_transport != NULL && g_current_transport->config.pin_code != NULL) {
+            if (s_transport_instance != NULL && s_transport_instance->config.pin_code != NULL) {
                 esp_bt_pin_code_t pin;
-                size_t pin_len = strlen(g_current_transport->config.pin_code);
+                size_t pin_len = strlen(s_transport_instance->config.pin_code);
                 if (pin_len > ESP_BT_PIN_CODE_LEN) {
                     pin_len = ESP_BT_PIN_CODE_LEN;
                 }
-                memcpy(pin, g_current_transport->config.pin_code, pin_len);
+                memcpy(pin, s_transport_instance->config.pin_code, pin_len);
                 esp_bt_gap_pin_reply(param->pin_req.bda, true, pin_len, pin);
             }
             break;
@@ -128,7 +136,7 @@ static void gap_callback(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *par
  */
 static void spp_callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 {
-    bt_spp_transport_t *transport = g_current_transport;
+    bt_spp_transport_t *transport = s_transport_instance;
     
     if (transport == NULL) {
         return;
@@ -403,7 +411,7 @@ static transport_err_t bt_spp_init(transport_t *self, const void *config)
     }
     
     transport->internal = internal;
-    g_current_transport = transport;
+    s_transport_instance = transport;
     
     transport_err_t err = init_bluetooth_stack(transport);
     if (err != TRANSPORT_OK) {
@@ -414,7 +422,7 @@ static transport_err_t bt_spp_init(transport_t *self, const void *config)
         vEventGroupDelete(internal->event_group);
         free(internal);
         transport->internal = NULL;
-        g_current_transport = NULL;
+        s_transport_instance = NULL;
         return err;
     }
     
@@ -433,7 +441,7 @@ static transport_err_t bt_spp_init(transport_t *self, const void *config)
         vEventGroupDelete(internal->event_group);
         free(internal);
         transport->internal = NULL;
-        g_current_transport = NULL;
+        s_transport_instance = NULL;
         return TRANSPORT_ERR_TIMEOUT;
     }
     
@@ -479,7 +487,7 @@ static transport_err_t bt_spp_deinit(transport_t *self)
     
     free(internal);
     transport->internal = NULL;
-    g_current_transport = NULL;
+    s_transport_instance = NULL;
     
     transport_set_state(self, TRANSPORT_STATE_UNINITIALIZED);
     

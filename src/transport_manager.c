@@ -31,6 +31,8 @@ typedef struct {
     transport_manager_config_t config;
     SemaphoreHandle_t mutex;
     bool initialized;
+    transport_manager_data_cb_t data_callback;
+    void *data_callback_user_data;
 } transport_manager_t;
 
 static transport_manager_t g_manager = {0};
@@ -65,6 +67,11 @@ static void manager_event_callback(transport_t *transport,
         case TRANSPORT_EVENT_DATA_RECEIVED:
             entry->stats.bytes_received += event->data_received.len;
             entry->stats.packets_received++;
+            if (g_manager.data_callback != NULL) {
+                g_manager.data_callback(handle, event->data_received.data, 
+                                        event->data_received.len, 
+                                        g_manager.data_callback_user_data);
+            }
             break;
             
         case TRANSPORT_EVENT_DATA_SENT:
@@ -447,6 +454,285 @@ transport_err_t transport_manager_reset_stats(transport_handle_t handle)
         transport_get_state(entry->transport) == TRANSPORT_STATE_CONNECTED) {
         entry->connect_time = esp_timer_get_time();
     }
+    
+    xSemaphoreGive(g_manager.mutex);
+    
+    return TRANSPORT_OK;
+}
+
+/* ============================================================================
+ * Multi-Transport Simultaneous Operations Implementation
+ * ============================================================================ */
+
+transport_err_t transport_manager_connect_handle(transport_handle_t handle,
+                                                  const char *address,
+                                                  uint32_t timeout_ms)
+{
+    transport_t *transport = transport_manager_get(handle);
+    
+    if (transport == NULL) {
+        return TRANSPORT_ERR_INVALID_ARG;
+    }
+    
+    return transport_connect(transport, address, timeout_ms);
+}
+
+transport_err_t transport_manager_disconnect_handle(transport_handle_t handle)
+{
+    transport_t *transport = transport_manager_get(handle);
+    
+    if (transport == NULL) {
+        return TRANSPORT_ERR_INVALID_ARG;
+    }
+    
+    return transport_disconnect(transport);
+}
+
+transport_err_t transport_manager_write_handle(transport_handle_t handle,
+                                                const uint8_t *data, size_t len,
+                                                size_t *bytes_written, uint32_t timeout_ms)
+{
+    transport_t *transport = transport_manager_get(handle);
+    
+    if (transport == NULL) {
+        return TRANSPORT_ERR_INVALID_ARG;
+    }
+    
+    return transport_write(transport, data, len, bytes_written, timeout_ms);
+}
+
+transport_err_t transport_manager_read_handle(transport_handle_t handle,
+                                               uint8_t *buffer, size_t len,
+                                               size_t *bytes_read, uint32_t timeout_ms)
+{
+    transport_t *transport = transport_manager_get(handle);
+    
+    if (transport == NULL) {
+        return TRANSPORT_ERR_INVALID_ARG;
+    }
+    
+    return transport_read(transport, buffer, len, bytes_read, timeout_ms);
+}
+
+size_t transport_manager_broadcast(const uint8_t *data, size_t len,
+                                    transport_handle_t exclude_handle,
+                                    uint32_t timeout_ms)
+{
+    if (!g_manager.initialized || data == NULL || len == 0) {
+        return 0;
+    }
+    
+    size_t success_count = 0;
+    
+    xSemaphoreTake(g_manager.mutex, portMAX_DELAY);
+    
+    for (int i = 0; i < TRANSPORT_MANAGER_MAX_TRANSPORTS; i++) {
+        if (!g_manager.entries[i].in_use) {
+            continue;
+        }
+        
+        if (i == exclude_handle) {
+            continue;
+        }
+        
+        transport_t *t = g_manager.entries[i].transport;
+        if (t == NULL || transport_get_state(t) != TRANSPORT_STATE_CONNECTED) {
+            continue;
+        }
+        
+        xSemaphoreGive(g_manager.mutex);
+        
+        transport_err_t err = transport_write(t, data, len, NULL, timeout_ms);
+        if (err == TRANSPORT_OK) {
+            success_count++;
+        }
+        
+        xSemaphoreTake(g_manager.mutex, portMAX_DELAY);
+    }
+    
+    xSemaphoreGive(g_manager.mutex);
+    
+    return success_count;
+}
+
+size_t transport_manager_poll(transport_poll_result_t *results, size_t max_results)
+{
+    if (!g_manager.initialized || results == NULL || max_results == 0) {
+        return 0;
+    }
+    
+    size_t count = 0;
+    
+    xSemaphoreTake(g_manager.mutex, portMAX_DELAY);
+    
+    for (int i = 0; i < TRANSPORT_MANAGER_MAX_TRANSPORTS && count < max_results; i++) {
+        if (!g_manager.entries[i].in_use) {
+            continue;
+        }
+        
+        transport_t *t = g_manager.entries[i].transport;
+        if (t == NULL || transport_get_state(t) != TRANSPORT_STATE_CONNECTED) {
+            continue;
+        }
+        
+        size_t available = 0;
+        if (transport_available(t, &available) == TRANSPORT_OK && available > 0) {
+            results[count].handle = i;
+            results[count].bytes_available = available;
+            count++;
+        }
+    }
+    
+    xSemaphoreGive(g_manager.mutex);
+    
+    return count;
+}
+
+transport_err_t transport_manager_read_any(uint8_t *buffer, size_t len,
+                                            size_t *bytes_read,
+                                            transport_handle_t *source_handle,
+                                            uint32_t timeout_ms)
+{
+    if (!g_manager.initialized || buffer == NULL || len == 0 || bytes_read == NULL) {
+        return TRANSPORT_ERR_INVALID_ARG;
+    }
+    
+    *bytes_read = 0;
+    if (source_handle != NULL) {
+        *source_handle = TRANSPORT_HANDLE_INVALID;
+    }
+    
+    uint32_t elapsed = 0;
+    const uint32_t poll_interval = 10;
+    
+    while (elapsed < timeout_ms || timeout_ms == 0) {
+        transport_poll_result_t poll_results[TRANSPORT_MANAGER_MAX_TRANSPORTS];
+        size_t poll_count = transport_manager_poll(poll_results, TRANSPORT_MANAGER_MAX_TRANSPORTS);
+        
+        if (poll_count > 0) {
+            transport_handle_t handle = poll_results[0].handle;
+            transport_t *t = transport_manager_get(handle);
+            
+            if (t != NULL) {
+                transport_err_t err = transport_read(t, buffer, len, bytes_read, 
+                                                      timeout_ms - elapsed);
+                if (err == TRANSPORT_OK && *bytes_read > 0) {
+                    if (source_handle != NULL) {
+                        *source_handle = handle;
+                    }
+                    return TRANSPORT_OK;
+                }
+            }
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(poll_interval));
+        elapsed += poll_interval;
+        
+        if (timeout_ms == 0) {
+            break;
+        }
+    }
+    
+    return TRANSPORT_ERR_TIMEOUT;
+}
+
+transport_err_t transport_manager_forward(transport_handle_t source_handle,
+                                           transport_handle_t dest_handle,
+                                           uint8_t *buffer, size_t buffer_len,
+                                           size_t *bytes_forwarded,
+                                           uint32_t timeout_ms)
+{
+    if (!g_manager.initialized || buffer == NULL || buffer_len == 0) {
+        return TRANSPORT_ERR_INVALID_ARG;
+    }
+    
+    if (bytes_forwarded != NULL) {
+        *bytes_forwarded = 0;
+    }
+    
+    transport_t *source = transport_manager_get(source_handle);
+    if (source == NULL) {
+        return TRANSPORT_ERR_INVALID_ARG;
+    }
+    
+    size_t bytes_read = 0;
+    transport_err_t err = transport_read(source, buffer, buffer_len, &bytes_read, timeout_ms);
+    
+    if (err != TRANSPORT_OK || bytes_read == 0) {
+        return err;
+    }
+    
+    size_t total_forwarded = 0;
+    
+    if (dest_handle == TRANSPORT_HANDLE_INVALID) {
+        size_t sent = transport_manager_broadcast(buffer, bytes_read, source_handle, timeout_ms);
+        if (sent > 0) {
+            total_forwarded = bytes_read;
+        }
+    } else {
+        transport_t *dest = transport_manager_get(dest_handle);
+        if (dest != NULL && transport_get_state(dest) == TRANSPORT_STATE_CONNECTED) {
+            size_t written = 0;
+            err = transport_write(dest, buffer, bytes_read, &written, timeout_ms);
+            if (err == TRANSPORT_OK) {
+                total_forwarded = written;
+            }
+        }
+    }
+    
+    if (bytes_forwarded != NULL) {
+        *bytes_forwarded = total_forwarded;
+    }
+    
+    return total_forwarded > 0 ? TRANSPORT_OK : TRANSPORT_ERR_IO;
+}
+
+size_t transport_manager_connected_count(void)
+{
+    if (!g_manager.initialized) {
+        return 0;
+    }
+    
+    size_t count = 0;
+    
+    xSemaphoreTake(g_manager.mutex, portMAX_DELAY);
+    
+    for (int i = 0; i < TRANSPORT_MANAGER_MAX_TRANSPORTS; i++) {
+        if (g_manager.entries[i].in_use) {
+            transport_t *t = g_manager.entries[i].transport;
+            if (t != NULL && transport_get_state(t) == TRANSPORT_STATE_CONNECTED) {
+                count++;
+            }
+        }
+    }
+    
+    xSemaphoreGive(g_manager.mutex);
+    
+    return count;
+}
+
+bool transport_manager_is_connected(transport_handle_t handle)
+{
+    transport_t *transport = transport_manager_get(handle);
+    
+    if (transport == NULL) {
+        return false;
+    }
+    
+    return transport_get_state(transport) == TRANSPORT_STATE_CONNECTED;
+}
+
+transport_err_t transport_manager_set_data_callback(transport_manager_data_cb_t callback,
+                                                     void *user_data)
+{
+    if (!g_manager.initialized) {
+        return TRANSPORT_ERR_NOT_INITIALIZED;
+    }
+    
+    xSemaphoreTake(g_manager.mutex, portMAX_DELAY);
+    
+    g_manager.data_callback = callback;
+    g_manager.data_callback_user_data = user_data;
     
     xSemaphoreGive(g_manager.mutex);
     

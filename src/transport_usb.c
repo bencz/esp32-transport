@@ -33,7 +33,16 @@ typedef struct {
     bool initialized;
 } usb_internal_t;
 
-static usb_transport_t *g_usb_transport = NULL;
+/**
+ * @brief Current transport instance pointer
+ * 
+ * Note: TinyUSB CDC callbacks do not provide a user context parameter,
+ * so we must store the transport instance here to access it from callbacks.
+ * This limits the implementation to a single USB CDC transport instance at a time.
+ * 
+ * The pointer is set during init and cleared during deinit.
+ */
+static usb_transport_t *s_transport_instance = NULL;
 
 static transport_err_t usb_init(transport_t *self, const void *config);
 static transport_err_t usb_deinit(transport_t *self);
@@ -107,7 +116,7 @@ static void cdc_rx_callback(int itf, cdcacm_event_t *event)
 {
     (void)itf;
     
-    usb_transport_t *transport = g_usb_transport;
+    usb_transport_t *transport = s_transport_instance;
     if (transport == NULL) {
         return;
     }
@@ -145,7 +154,7 @@ static void cdc_line_state_callback(int itf, cdcacm_event_t *event)
 {
     (void)itf;
     
-    usb_transport_t *transport = g_usb_transport;
+    usb_transport_t *transport = s_transport_instance;
     if (transport == NULL) {
         return;
     }
@@ -174,7 +183,7 @@ static void cdc_line_coding_callback(int itf, cdcacm_event_t *event)
 {
     (void)itf;
     
-    usb_transport_t *transport = g_usb_transport;
+    usb_transport_t *transport = s_transport_instance;
     if (transport == NULL) {
         return;
     }
@@ -236,7 +245,7 @@ static transport_err_t usb_init(transport_t *self, const void *config)
     }
     
     transport->internal = internal;
-    g_usb_transport = transport;
+    s_transport_instance = transport;
     
     transport_set_state(self, TRANSPORT_STATE_INITIALIZED);
     
@@ -268,7 +277,7 @@ static transport_err_t usb_deinit(transport_t *self)
     
     free(internal);
     transport->internal = NULL;
-    g_usb_transport = NULL;
+    s_transport_instance = NULL;
     
     transport_set_state(self, TRANSPORT_STATE_UNINITIALIZED);
     

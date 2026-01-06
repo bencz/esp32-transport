@@ -54,7 +54,18 @@ typedef struct {
 #define EVENT_DATA_READY    BIT3
 #define EVENT_MTU_SET       BIT4
 
-static ble_transport_t *g_ble_transport = NULL;
+/**
+ * @brief Current transport instance pointer
+ * 
+ * Note: ESP-IDF's BLE callbacks (esp_ble_gap_register_callback,
+ * esp_ble_gatts_register_callback) do not provide a user context parameter,
+ * so we must store the transport instance here to access it from callbacks.
+ * This limits the implementation to a single BLE transport instance at a time,
+ * which aligns with ESP-IDF's single Bluetooth stack limitation.
+ * 
+ * The pointer is set during init and cleared during deinit.
+ */
+static ble_transport_t *s_transport_instance = NULL;
 
 static transport_err_t ble_init(transport_t *self, const void *config);
 static transport_err_t ble_deinit(transport_t *self);
@@ -109,7 +120,7 @@ static const uint8_t char_prop_read_write_notify =
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
-    ble_transport_t *transport = g_ble_transport;
+    ble_transport_t *transport = s_transport_instance;
     if (transport == NULL) {
         return;
     }
@@ -193,7 +204,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if,
                                  esp_ble_gatts_cb_param_t *param)
 {
-    ble_transport_t *transport = g_ble_transport;
+    ble_transport_t *transport = s_transport_instance;
     if (transport == NULL) {
         return;
     }
@@ -489,7 +500,7 @@ static transport_err_t ble_init(transport_t *self, const void *config)
     }
     
     transport->internal = internal;
-    g_ble_transport = transport;
+    s_transport_instance = transport;
     
     transport_err_t err = init_ble_stack(transport);
     if (err != TRANSPORT_OK) {
@@ -500,7 +511,7 @@ static transport_err_t ble_init(transport_t *self, const void *config)
         vEventGroupDelete(internal->event_group);
         free(internal);
         transport->internal = NULL;
-        g_ble_transport = NULL;
+        s_transport_instance = NULL;
         return err;
     }
     
@@ -519,7 +530,7 @@ static transport_err_t ble_init(transport_t *self, const void *config)
         vEventGroupDelete(internal->event_group);
         free(internal);
         transport->internal = NULL;
-        g_ble_transport = NULL;
+        s_transport_instance = NULL;
         return TRANSPORT_ERR_TIMEOUT;
     }
     
@@ -560,7 +571,7 @@ static transport_err_t ble_deinit(transport_t *self)
     
     free(internal);
     transport->internal = NULL;
-    g_ble_transport = NULL;
+    s_transport_instance = NULL;
     
     transport_set_state(self, TRANSPORT_STATE_UNINITIALIZED);
     
