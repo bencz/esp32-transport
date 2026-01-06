@@ -415,6 +415,11 @@ CONFIG_TINYUSB_CDC_ENABLED=y
 | UART | `TRANSPORT_TYPE_UART` | Hardware UART serial |
 | USB CDC | `TRANSPORT_TYPE_CUSTOM` | USB CDC ACM (virtual serial) |
 
+## Documentation Notice
+
+> This README.md and the project documentation were generated with the assistance of artificial intelligence.  
+> The use of AI is strictly limited to documentation; all source code was written manually.
+
 ## License
 
 See LICENSE file for details.
