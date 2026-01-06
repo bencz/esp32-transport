@@ -1,6 +1,6 @@
 /**
  * @file transport_manager.c
- * @brief Implementação do gerenciador de transportes
+ * @brief Transport manager implementation
  */
 
 #include "transport_manager.h"

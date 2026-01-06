@@ -1,6 +1,6 @@
 /**
  * @file transport_ble.c
- * @brief Implementação do backend Bluetooth Low Energy
+ * @brief Bluetooth Low Energy backend implementation
  */
 
 #include "transport_ble.h"

@@ -1,10 +1,10 @@
 /**
  * @file transport.h
- * @brief Sistema de abstração para modos de transporte no ESP32
+ * @brief Transport abstraction system for ESP32
  * 
- * Este módulo fornece uma interface unificada para diferentes backends
- * de comunicação (Bluetooth Classic, BLE, WiFi, UART, etc.) usando
- * vtables para polimorfismo em C.
+ * This module provides a unified interface for different communication
+ * backends (Bluetooth Classic, BLE, WiFi, UART, etc.) using vtables
+ * for polymorphism in C.
  * 
  * @author Claude
  * @version 1.0.0
@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Códigos de erro específicos do sistema de transporte
+ * @brief Transport system specific error codes
  */
 typedef enum {
     TRANSPORT_OK = 0,
@@ -42,7 +42,7 @@ typedef enum {
 } transport_err_t;
 
 /**
- * @brief Estados possíveis de um transporte
+ * @brief Possible transport states
  */
 typedef enum {
     TRANSPORT_STATE_UNINITIALIZED = 0,
@@ -54,7 +54,7 @@ typedef enum {
 } transport_state_t;
 
 /**
- * @brief Tipos de transporte disponíveis
+ * @brief Available transport types
  */
 typedef enum {
     TRANSPORT_TYPE_UNKNOWN = 0,
@@ -69,7 +69,7 @@ typedef enum {
 } transport_type_t;
 
 /**
- * @brief Eventos que podem ser emitidos pelo transporte
+ * @brief Events that can be emitted by the transport
  */
 typedef enum {
     TRANSPORT_EVENT_CONNECTED = 0,
@@ -89,18 +89,18 @@ typedef struct transport_config_s transport_config_t;
 typedef struct transport_event_s transport_event_t;
 
 /**
- * @brief Callback para eventos do transporte
+ * @brief Callback for transport events
  * 
- * @param transport Ponteiro para o transporte que gerou o evento
- * @param event Ponteiro para os dados do evento
- * @param user_data Dados do usuário passados no registro do callback
+ * @param transport Pointer to the transport that generated the event
+ * @param event Pointer to the event data
+ * @param user_data User data passed during callback registration
  */
 typedef void (*transport_event_cb_t)(transport_t *transport, 
                                       const transport_event_t *event, 
                                       void *user_data);
 
 /**
- * @brief Estrutura de evento do transporte
+ * @brief Transport event structure
  */
 struct transport_event_s {
     transport_event_type_t type;
@@ -124,7 +124,7 @@ struct transport_event_s {
 };
 
 /**
- * @brief Configuração base para transportes
+ * @brief Base configuration for transports
  */
 struct transport_config_s {
     const char *name;
@@ -136,133 +136,133 @@ struct transport_config_s {
 };
 
 /**
- * @brief Vtable com as operações do transporte
+ * @brief Vtable with transport operations
  * 
- * Esta estrutura define a interface que todos os backends de
- * transporte devem implementar. Funciona como uma vtable em C++.
+ * This structure defines the interface that all transport backends
+ * must implement. Works like a vtable in C++.
  */
 struct transport_vtable_s {
     /**
-     * @brief Inicializa o transporte com configuração específica
-     * @param self Ponteiro para a instância do transporte
-     * @param config Configuração específica do backend
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Initializes the transport with specific configuration
+     * @param self Pointer to the transport instance
+     * @param config Backend-specific configuration
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*init)(transport_t *self, const void *config);
     
     /**
-     * @brief Desinicializa o transporte e libera recursos
-     * @param self Ponteiro para a instância do transporte
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Deinitializes the transport and releases resources
+     * @param self Pointer to the transport instance
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*deinit)(transport_t *self);
     
     /**
-     * @brief Estabelece conexão
-     * @param self Ponteiro para a instância do transporte
-     * @param address Endereço de destino (formato depende do backend)
-     * @param timeout_ms Timeout em milissegundos (0 = usar padrão)
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Establishes connection
+     * @param self Pointer to the transport instance
+     * @param address Destination address (format depends on backend)
+     * @param timeout_ms Timeout in milliseconds (0 = use default)
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*connect)(transport_t *self, const char *address, uint32_t timeout_ms);
     
     /**
-     * @brief Encerra conexão
-     * @param self Ponteiro para a instância do transporte
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Terminates connection
+     * @param self Pointer to the transport instance
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*disconnect)(transport_t *self);
     
     /**
-     * @brief Envia dados
-     * @param self Ponteiro para a instância do transporte
-     * @param data Ponteiro para os dados a enviar
-     * @param len Tamanho dos dados em bytes
-     * @param bytes_written Ponteiro para armazenar bytes escritos (pode ser NULL)
-     * @param timeout_ms Timeout em milissegundos (0 = usar padrão)
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Sends data
+     * @param self Pointer to the transport instance
+     * @param data Pointer to the data to send
+     * @param len Size of data in bytes
+     * @param bytes_written Pointer to store bytes written (can be NULL)
+     * @param timeout_ms Timeout in milliseconds (0 = use default)
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*write)(transport_t *self, const uint8_t *data, size_t len, 
                              size_t *bytes_written, uint32_t timeout_ms);
     
     /**
-     * @brief Recebe dados
-     * @param self Ponteiro para a instância do transporte
-     * @param buffer Buffer para armazenar dados recebidos
-     * @param len Tamanho máximo a receber
-     * @param bytes_read Ponteiro para armazenar bytes lidos
-     * @param timeout_ms Timeout em milissegundos (0 = usar padrão)
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Receives data
+     * @param self Pointer to the transport instance
+     * @param buffer Buffer to store received data
+     * @param len Maximum size to receive
+     * @param bytes_read Pointer to store bytes read
+     * @param timeout_ms Timeout in milliseconds (0 = use default)
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*read)(transport_t *self, uint8_t *buffer, size_t len, 
                             size_t *bytes_read, uint32_t timeout_ms);
     
     /**
-     * @brief Verifica se há dados disponíveis para leitura
-     * @param self Ponteiro para a instância do transporte
-     * @param available Ponteiro para armazenar quantidade de bytes disponíveis
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Checks if data is available for reading
+     * @param self Pointer to the transport instance
+     * @param available Pointer to store the number of available bytes
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*available)(transport_t *self, size_t *available);
     
     /**
-     * @brief Limpa buffers de recepção e transmissão
-     * @param self Ponteiro para a instância do transporte
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Clears receive and transmit buffers
+     * @param self Pointer to the transport instance
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*flush)(transport_t *self);
     
     /**
-     * @brief Obtém o estado atual do transporte
-     * @param self Ponteiro para a instância do transporte
-     * @return Estado atual
+     * @brief Gets the current transport state
+     * @param self Pointer to the transport instance
+     * @return Current state
      */
     transport_state_t (*get_state)(transport_t *self);
     
     /**
-     * @brief Obtém o tipo do transporte
-     * @param self Ponteiro para a instância do transporte
-     * @return Tipo do transporte
+     * @brief Gets the transport type
+     * @param self Pointer to the transport instance
+     * @return Transport type
      */
     transport_type_t (*get_type)(transport_t *self);
     
     /**
-     * @brief Obtém informações sobre o transporte
-     * @param self Ponteiro para a instância do transporte
-     * @param info Buffer para armazenar informações
-     * @param len Tamanho do buffer
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Gets information about the transport
+     * @param self Pointer to the transport instance
+     * @param info Buffer to store information
+     * @param len Buffer size
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*get_info)(transport_t *self, char *info, size_t len);
     
     /**
-     * @brief Configura opção específica do transporte
-     * @param self Ponteiro para a instância do transporte
-     * @param option Identificador da opção
-     * @param value Ponteiro para o valor da opção
-     * @param len Tamanho do valor
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Sets a transport-specific option
+     * @param self Pointer to the transport instance
+     * @param option Option identifier
+     * @param value Pointer to the option value
+     * @param len Value size
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*set_option)(transport_t *self, int option, 
                                   const void *value, size_t len);
     
     /**
-     * @brief Obtém opção específica do transporte
-     * @param self Ponteiro para a instância do transporte
-     * @param option Identificador da opção
-     * @param value Buffer para armazenar o valor
-     * @param len Ponteiro para tamanho (entrada: tamanho do buffer, saída: tamanho usado)
-     * @return TRANSPORT_OK em caso de sucesso
+     * @brief Gets a transport-specific option
+     * @param self Pointer to the transport instance
+     * @param option Option identifier
+     * @param value Buffer to store the value
+     * @param len Pointer to size (input: buffer size, output: used size)
+     * @return TRANSPORT_OK on success
      */
     transport_err_t (*get_option)(transport_t *self, int option, 
                                   void *value, size_t *len);
 };
 
 /**
- * @brief Estrutura base do transporte
+ * @brief Base transport structure
  * 
- * Todos os backends específicos devem "herdar" desta estrutura
- * colocando-a como primeiro membro.
+ * All specific backends must "inherit" from this structure
+ * by placing it as the first member.
  */
 struct transport_s {
     const transport_vtable_t *vtable;
@@ -273,13 +273,13 @@ struct transport_s {
 };
 
 /**
- * @defgroup transport_api API de Alto Nível
- * @brief Funções de conveniência que delegam para a vtable
+ * @defgroup transport_api High-Level API
+ * @brief Convenience functions that delegate to the vtable
  * @{
  */
 
 /**
- * @brief Inicializa um transporte
+ * @brief Initializes a transport
  */
 static inline transport_err_t transport_init(transport_t *transport, const void *config)
 {
@@ -290,7 +290,7 @@ static inline transport_err_t transport_init(transport_t *transport, const void 
 }
 
 /**
- * @brief Desinicializa um transporte
+ * @brief Deinitializes a transport
  */
 static inline transport_err_t transport_deinit(transport_t *transport)
 {
@@ -301,7 +301,7 @@ static inline transport_err_t transport_deinit(transport_t *transport)
 }
 
 /**
- * @brief Conecta o transporte
+ * @brief Connects the transport
  */
 static inline transport_err_t transport_connect(transport_t *transport, 
                                                  const char *address, 
@@ -314,7 +314,7 @@ static inline transport_err_t transport_connect(transport_t *transport,
 }
 
 /**
- * @brief Desconecta o transporte
+ * @brief Disconnects the transport
  */
 static inline transport_err_t transport_disconnect(transport_t *transport)
 {
@@ -325,7 +325,7 @@ static inline transport_err_t transport_disconnect(transport_t *transport)
 }
 
 /**
- * @brief Envia dados pelo transporte
+ * @brief Sends data through the transport
  */
 static inline transport_err_t transport_write(transport_t *transport, 
                                                const uint8_t *data, 
@@ -340,7 +340,7 @@ static inline transport_err_t transport_write(transport_t *transport,
 }
 
 /**
- * @brief Recebe dados do transporte
+ * @brief Receives data from the transport
  */
 static inline transport_err_t transport_read(transport_t *transport, 
                                               uint8_t *buffer, 
@@ -355,7 +355,7 @@ static inline transport_err_t transport_read(transport_t *transport,
 }
 
 /**
- * @brief Verifica dados disponíveis
+ * @brief Checks available data
  */
 static inline transport_err_t transport_available(transport_t *transport, size_t *available)
 {
@@ -366,7 +366,7 @@ static inline transport_err_t transport_available(transport_t *transport, size_t
 }
 
 /**
- * @brief Limpa buffers do transporte
+ * @brief Clears transport buffers
  */
 static inline transport_err_t transport_flush(transport_t *transport)
 {
@@ -377,7 +377,7 @@ static inline transport_err_t transport_flush(transport_t *transport)
 }
 
 /**
- * @brief Obtém estado do transporte
+ * @brief Gets transport state
  */
 static inline transport_state_t transport_get_state(transport_t *transport)
 {
@@ -388,7 +388,7 @@ static inline transport_state_t transport_get_state(transport_t *transport)
 }
 
 /**
- * @brief Obtém tipo do transporte
+ * @brief Gets transport type
  */
 static inline transport_type_t transport_get_type(transport_t *transport)
 {
@@ -399,7 +399,7 @@ static inline transport_type_t transport_get_type(transport_t *transport)
 }
 
 /**
- * @brief Obtém informações do transporte
+ * @brief Gets transport information
  */
 static inline transport_err_t transport_get_info(transport_t *transport, char *info, size_t len)
 {
@@ -410,7 +410,7 @@ static inline transport_err_t transport_get_info(transport_t *transport, char *i
 }
 
 /**
- * @brief Configura opção do transporte
+ * @brief Sets transport option
  */
 static inline transport_err_t transport_set_option(transport_t *transport, 
                                                     int option,
@@ -424,7 +424,7 @@ static inline transport_err_t transport_set_option(transport_t *transport,
 }
 
 /**
- * @brief Obtém opção do transporte
+ * @brief Gets transport option
  */
 static inline transport_err_t transport_get_option(transport_t *transport, 
                                                     int option,
@@ -440,37 +440,37 @@ static inline transport_err_t transport_get_option(transport_t *transport,
 /** @} */
 
 /**
- * @brief Converte código de erro para string
- * @param err Código de erro
- * @return String descritiva do erro
+ * @brief Converts error code to string
+ * @param err Error code
+ * @return Descriptive error string
  */
 const char *transport_err_to_str(transport_err_t err);
 
 /**
- * @brief Converte estado para string
- * @param state Estado do transporte
- * @return String descritiva do estado
+ * @brief Converts state to string
+ * @param state Transport state
+ * @return Descriptive state string
  */
 const char *transport_state_to_str(transport_state_t state);
 
 /**
- * @brief Converte tipo para string
- * @param type Tipo do transporte
- * @return String descritiva do tipo
+ * @brief Converts type to string
+ * @param type Transport type
+ * @return Descriptive type string
  */
 const char *transport_type_to_str(transport_type_t type);
 
 /**
- * @brief Emite um evento para o callback registrado
- * @param transport Ponteiro para o transporte
- * @param event Ponteiro para o evento
+ * @brief Emits an event to the registered callback
+ * @param transport Pointer to the transport
+ * @param event Pointer to the event
  */
 void transport_emit_event(transport_t *transport, const transport_event_t *event);
 
 /**
- * @brief Altera o estado do transporte e emite evento
- * @param transport Ponteiro para o transporte
- * @param new_state Novo estado
+ * @brief Changes the transport state and emits event
+ * @param transport Pointer to the transport
+ * @param new_state New state
  */
 void transport_set_state(transport_t *transport, transport_state_t new_state);
 

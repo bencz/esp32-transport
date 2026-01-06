@@ -1,13 +1,13 @@
 /**
  * @file transport.c
- * @brief Implementação das funções utilitárias do sistema de transporte
+ * @brief Implementation of transport system utility functions
  */
 
 #include "transport.h"
 #include <string.h>
 
 /**
- * @brief Tabela de strings para códigos de erro
+ * @brief String table for error codes
  */
 static const char *const err_strings[] = {
     [TRANSPORT_OK]                    = "OK",
@@ -25,7 +25,7 @@ static const char *const err_strings[] = {
 };
 
 /**
- * @brief Tabela de strings para estados
+ * @brief String table for states
  */
 static const char *const state_strings[] = {
     [TRANSPORT_STATE_UNINITIALIZED] = "Uninitialized",
@@ -37,7 +37,7 @@ static const char *const state_strings[] = {
 };
 
 /**
- * @brief Tabela de strings para tipos
+ * @brief String table for types
  */
 static const char *const type_strings[] = {
     [TRANSPORT_TYPE_UNKNOWN]    = "Unknown",

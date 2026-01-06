@@ -1,6 +1,6 @@
 /**
  * @file transport_bt_spp.c
- * @brief Implementação do backend Bluetooth Classic SPP
+ * @brief Bluetooth Classic SPP backend implementation
  */
 
 #include "transport_bt_spp.h"
@@ -28,7 +28,7 @@ static const char *TAG = "bt_spp_transport";
 #define BT_SPP_DEFAULT_TIMEOUT_MS   (5000)
 
 /**
- * @brief Dados internos do transporte SPP
+ * @brief SPP transport internal data
  */
 typedef struct {
     SemaphoreHandle_t mutex;
@@ -47,12 +47,12 @@ typedef struct {
 #define EVENT_DATA_READY    BIT3
 
 /**
- * @brief Ponteiro global para o transporte atual (necessário para callbacks do ESP-IDF)
+ * @brief Global pointer to current transport (required for ESP-IDF callbacks)
  */
 static bt_spp_transport_t *g_current_transport = NULL;
 
 /**
- * @brief Protótipos das funções da vtable
+ * @brief Vtable function prototypes
  */
 static transport_err_t bt_spp_init(transport_t *self, const void *config);
 static transport_err_t bt_spp_deinit(transport_t *self);
@@ -73,7 +73,7 @@ static transport_err_t bt_spp_get_option(transport_t *self, int option,
                                           void *value, size_t *len);
 
 /**
- * @brief Vtable do transporte Bluetooth SPP
+ * @brief Bluetooth SPP transport vtable
  */
 static const transport_vtable_t bt_spp_vtable = {
     .init       = bt_spp_init,
@@ -92,7 +92,7 @@ static const transport_vtable_t bt_spp_vtable = {
 };
 
 /**
- * @brief Callback de eventos GAP
+ * @brief GAP event callback
  */
 static void gap_callback(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 {
@@ -124,7 +124,7 @@ static void gap_callback(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *par
 }
 
 /**
- * @brief Callback de eventos SPP
+ * @brief SPP event callback
  */
 static void spp_callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 {
@@ -258,7 +258,7 @@ static void spp_callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 }
 
 /**
- * @brief Inicializa o stack Bluetooth
+ * @brief Initializes the Bluetooth stack
  */
 static transport_err_t init_bluetooth_stack(bt_spp_transport_t *transport)
 {
@@ -340,7 +340,7 @@ static transport_err_t init_bluetooth_stack(bt_spp_transport_t *transport)
 }
 
 /**
- * @brief Desinicializa o stack Bluetooth
+ * @brief Deinitializes the Bluetooth stack
  */
 static void deinit_bluetooth_stack(void)
 {

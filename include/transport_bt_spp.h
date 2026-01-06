@@ -1,9 +1,9 @@
 /**
  * @file transport_bt_spp.h
- * @brief Backend de transporte para Bluetooth Classic SPP (Serial Port Profile)
+ * @brief Transport backend for Bluetooth Classic SPP (Serial Port Profile)
  * 
- * Este módulo implementa a interface de transporte usando Bluetooth Classic
- * com o perfil SPP para comunicação serial sem fio.
+ * This module implements the transport interface using Bluetooth Classic
+ * with the SPP profile for wireless serial communication.
  */
 
 #ifndef TRANSPORT_BT_SPP_H
@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Opções específicas do Bluetooth SPP
+ * @brief Bluetooth SPP specific options
  */
 typedef enum {
     BT_SPP_OPT_DEVICE_NAME = 0x100,
@@ -28,7 +28,7 @@ typedef enum {
 } bt_spp_option_t;
 
 /**
- * @brief Modos de segurança para Bluetooth
+ * @brief Bluetooth security modes
  */
 typedef enum {
     BT_SPP_SEC_NONE = 0,
@@ -38,7 +38,7 @@ typedef enum {
 } bt_spp_security_t;
 
 /**
- * @brief Papel do dispositivo na conexão SPP
+ * @brief Device role in SPP connection
  */
 typedef enum {
     BT_SPP_ROLE_MASTER = 0,
@@ -46,7 +46,7 @@ typedef enum {
 } bt_spp_role_t;
 
 /**
- * @brief Configuração específica para Bluetooth SPP
+ * @brief Bluetooth SPP specific configuration
  */
 typedef struct {
     transport_config_t base;
@@ -59,10 +59,10 @@ typedef struct {
 } bt_spp_config_t;
 
 /**
- * @brief Estrutura do transporte Bluetooth SPP
+ * @brief Bluetooth SPP transport structure
  * 
- * Esta estrutura estende transport_t para incluir dados específicos
- * do Bluetooth Classic SPP.
+ * This structure extends transport_t to include Bluetooth Classic
+ * SPP specific data.
  */
 typedef struct {
     transport_t base;
@@ -77,74 +77,74 @@ typedef struct {
 } bt_spp_transport_t;
 
 /**
- * @brief Cria uma instância do transporte Bluetooth SPP
+ * @brief Creates a Bluetooth SPP transport instance
  * 
- * @return Ponteiro para o transporte criado, ou NULL em caso de erro
+ * @return Pointer to the created transport, or NULL on error
  */
 bt_spp_transport_t *bt_spp_transport_create(void);
 
 /**
- * @brief Destrói uma instância do transporte Bluetooth SPP
+ * @brief Destroys a Bluetooth SPP transport instance
  * 
- * @param transport Ponteiro para o transporte a ser destruído
+ * @param transport Pointer to the transport to destroy
  */
 void bt_spp_transport_destroy(bt_spp_transport_t *transport);
 
 /**
- * @brief Obtém configuração padrão para Bluetooth SPP
+ * @brief Gets default configuration for Bluetooth SPP
  * 
- * @param config Ponteiro para estrutura de configuração a ser preenchida
+ * @param config Pointer to configuration structure to fill
  */
 void bt_spp_config_default(bt_spp_config_t *config);
 
 /**
- * @brief Obtém a vtable do transporte Bluetooth SPP
+ * @brief Gets the Bluetooth SPP transport vtable
  * 
- * @return Ponteiro para a vtable
+ * @return Pointer to the vtable
  */
 const transport_vtable_t *bt_spp_get_vtable(void);
 
 /**
- * @brief Inicia modo de escuta (servidor)
+ * @brief Starts listening mode (server)
  * 
- * @param transport Ponteiro para o transporte
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @return TRANSPORT_OK on success
  */
 transport_err_t bt_spp_listen(bt_spp_transport_t *transport);
 
 /**
- * @brief Para o modo de escuta
+ * @brief Stops listening mode
  * 
- * @param transport Ponteiro para o transporte
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @return TRANSPORT_OK on success
  */
 transport_err_t bt_spp_stop_listen(bt_spp_transport_t *transport);
 
 /**
- * @brief Obtém endereço do dispositivo remoto conectado
+ * @brief Gets connected remote device address
  * 
- * @param transport Ponteiro para o transporte
- * @param addr Buffer para armazenar o endereço (6 bytes)
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @param addr Buffer to store the address (6 bytes)
+ * @return TRANSPORT_OK on success
  */
 transport_err_t bt_spp_get_remote_address(bt_spp_transport_t *transport, uint8_t *addr);
 
 /**
- * @brief Converte endereço Bluetooth para string
+ * @brief Converts Bluetooth address to string
  * 
- * @param addr Endereço Bluetooth (6 bytes)
- * @param str Buffer para string (mínimo 18 bytes)
- * @param len Tamanho do buffer
- * @return Ponteiro para a string, ou NULL em caso de erro
+ * @param addr Bluetooth address (6 bytes)
+ * @param str Buffer for string (minimum 18 bytes)
+ * @param len Buffer size
+ * @return Pointer to the string, or NULL on error
  */
 char *bt_addr_to_str(const uint8_t *addr, char *str, size_t len);
 
 /**
- * @brief Converte string para endereço Bluetooth
+ * @brief Converts string to Bluetooth address
  * 
- * @param str String no formato "XX:XX:XX:XX:XX:XX"
- * @param addr Buffer para o endereço (6 bytes)
- * @return TRANSPORT_OK em caso de sucesso
+ * @param str String in format "XX:XX:XX:XX:XX:XX"
+ * @param addr Buffer for the address (6 bytes)
+ * @return TRANSPORT_OK on success
  */
 transport_err_t bt_str_to_addr(const char *str, uint8_t *addr);
 

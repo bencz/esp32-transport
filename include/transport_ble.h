@@ -1,9 +1,9 @@
 /**
  * @file transport_ble.h
- * @brief Backend de transporte para Bluetooth Low Energy (BLE)
+ * @brief Transport backend for Bluetooth Low Energy (BLE)
  * 
- * Este módulo implementa a interface de transporte usando BLE
- * com um serviço GATT customizado para comunicação bidirecional.
+ * This module implements the transport interface using BLE
+ * with a custom GATT service for bidirectional communication.
  */
 
 #ifndef TRANSPORT_BLE_H
@@ -16,14 +16,14 @@ extern "C" {
 #endif
 
 /**
- * @brief UUIDs padrão para o serviço de transporte BLE
+ * @brief Default UUIDs for the BLE transport service
  */
 #define BLE_TRANSPORT_SERVICE_UUID      0x00FF
 #define BLE_TRANSPORT_CHAR_TX_UUID      0xFF01
 #define BLE_TRANSPORT_CHAR_RX_UUID      0xFF02
 
 /**
- * @brief Opções específicas do BLE
+ * @brief BLE specific options
  */
 typedef enum {
     BLE_OPT_DEVICE_NAME = 0x200,
@@ -37,7 +37,7 @@ typedef enum {
 } ble_option_t;
 
 /**
- * @brief Papel do dispositivo BLE
+ * @brief BLE device role
  */
 typedef enum {
     BLE_ROLE_PERIPHERAL = 0,
@@ -45,7 +45,7 @@ typedef enum {
 } ble_role_t;
 
 /**
- * @brief Configuração de advertising
+ * @brief Advertising configuration
  */
 typedef struct {
     uint16_t min_interval;
@@ -55,7 +55,7 @@ typedef struct {
 } ble_adv_config_t;
 
 /**
- * @brief Configuração de conexão
+ * @brief Connection configuration
  */
 typedef struct {
     uint16_t min_interval;
@@ -65,7 +65,7 @@ typedef struct {
 } ble_conn_config_t;
 
 /**
- * @brief Configuração específica para BLE
+ * @brief BLE specific configuration
  */
 typedef struct {
     transport_config_t base;
@@ -80,7 +80,7 @@ typedef struct {
 } ble_config_t;
 
 /**
- * @brief Estrutura do transporte BLE
+ * @brief BLE transport structure
  */
 typedef struct {
     transport_t base;
@@ -95,106 +95,106 @@ typedef struct {
 } ble_transport_t;
 
 /**
- * @brief Cria uma instância do transporte BLE
+ * @brief Creates a BLE transport instance
  * 
- * @return Ponteiro para o transporte criado, ou NULL em caso de erro
+ * @return Pointer to the created transport, or NULL on error
  */
 ble_transport_t *ble_transport_create(void);
 
 /**
- * @brief Destrói uma instância do transporte BLE
+ * @brief Destroys a BLE transport instance
  * 
- * @param transport Ponteiro para o transporte a ser destruído
+ * @param transport Pointer to the transport to destroy
  */
 void ble_transport_destroy(ble_transport_t *transport);
 
 /**
- * @brief Obtém configuração padrão para BLE
+ * @brief Gets default configuration for BLE
  * 
- * @param config Ponteiro para estrutura de configuração a ser preenchida
+ * @param config Pointer to configuration structure to fill
  */
 void ble_config_default(ble_config_t *config);
 
 /**
- * @brief Obtém a vtable do transporte BLE
+ * @brief Gets the BLE transport vtable
  * 
- * @return Ponteiro para a vtable
+ * @return Pointer to the vtable
  */
 const transport_vtable_t *ble_get_vtable(void);
 
 /**
- * @brief Inicia advertising (modo periférico)
+ * @brief Starts advertising (peripheral mode)
  * 
- * @param transport Ponteiro para o transporte
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @return TRANSPORT_OK on success
  */
 transport_err_t ble_start_advertising(ble_transport_t *transport);
 
 /**
- * @brief Para advertising
+ * @brief Stops advertising
  * 
- * @param transport Ponteiro para o transporte
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @return TRANSPORT_OK on success
  */
 transport_err_t ble_stop_advertising(ble_transport_t *transport);
 
 /**
- * @brief Inicia scan (modo central)
+ * @brief Starts scan (central mode)
  * 
- * @param transport Ponteiro para o transporte
- * @param duration_sec Duração do scan em segundos (0 = indefinido)
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @param duration_sec Scan duration in seconds (0 = indefinite)
+ * @return TRANSPORT_OK on success
  */
 transport_err_t ble_start_scan(ble_transport_t *transport, uint32_t duration_sec);
 
 /**
- * @brief Para scan
+ * @brief Stops scan
  * 
- * @param transport Ponteiro para o transporte
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @return TRANSPORT_OK on success
  */
 transport_err_t ble_stop_scan(ble_transport_t *transport);
 
 /**
- * @brief Obtém MTU atual da conexão
+ * @brief Gets current connection MTU
  * 
- * @param transport Ponteiro para o transporte
- * @return MTU atual, ou 0 se não conectado
+ * @param transport Pointer to the transport
+ * @return Current MTU, or 0 if not connected
  */
 uint16_t ble_get_mtu(ble_transport_t *transport);
 
 /**
- * @brief Solicita atualização de MTU
+ * @brief Requests MTU update
  * 
- * @param transport Ponteiro para o transporte
- * @param mtu MTU desejado
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @param mtu Desired MTU
+ * @return TRANSPORT_OK on success
  */
 transport_err_t ble_request_mtu(ble_transport_t *transport, uint16_t mtu);
 
 /**
- * @brief Obtém endereço do peer conectado
+ * @brief Gets connected peer address
  * 
- * @param transport Ponteiro para o transporte
- * @param addr Buffer para armazenar o endereço (6 bytes)
- * @param addr_type Ponteiro para armazenar o tipo de endereço (pode ser NULL)
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @param addr Buffer to store the address (6 bytes)
+ * @param addr_type Pointer to store the address type (can be NULL)
+ * @return TRANSPORT_OK on success
  */
 transport_err_t ble_get_peer_address(ble_transport_t *transport, uint8_t *addr, uint8_t *addr_type);
 
 /**
- * @brief Callback para dispositivos descobertos durante scan
+ * @brief Callback for devices discovered during scan
  */
 typedef void (*ble_scan_result_cb_t)(const uint8_t *addr, uint8_t addr_type, 
                                       int8_t rssi, const char *name, void *user_data);
 
 /**
- * @brief Registra callback para resultados de scan
+ * @brief Registers callback for scan results
  * 
- * @param transport Ponteiro para o transporte
- * @param callback Função de callback
- * @param user_data Dados do usuário
- * @return TRANSPORT_OK em caso de sucesso
+ * @param transport Pointer to the transport
+ * @param callback Callback function
+ * @param user_data User data
+ * @return TRANSPORT_OK on success
  */
 transport_err_t ble_set_scan_callback(ble_transport_t *transport, 
                                        ble_scan_result_cb_t callback, 
