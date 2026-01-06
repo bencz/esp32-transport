@@ -19,6 +19,9 @@
 
 #include "esp_err.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -270,6 +273,7 @@ struct transport_s {
     transport_event_cb_t event_callback;
     void *user_data;
     const char *name;
+    SemaphoreHandle_t mutex;
 };
 
 /**
@@ -280,6 +284,9 @@ struct transport_s {
 
 /**
  * @brief Initializes a transport
+ * @param transport Pointer to the transport instance
+ * @param config Backend-specific configuration
+ * @return TRANSPORT_OK on success
  */
 static inline transport_err_t transport_init(transport_t *transport, const void *config)
 {
@@ -326,6 +333,12 @@ static inline transport_err_t transport_disconnect(transport_t *transport)
 
 /**
  * @brief Sends data through the transport
+ * @param transport Pointer to the transport instance
+ * @param data Pointer to the data to send
+ * @param len Size of data in bytes
+ * @param bytes_written Pointer to store bytes written (can be NULL)
+ * @param timeout_ms Timeout in milliseconds (0 = use default)
+ * @return TRANSPORT_OK on success
  */
 static inline transport_err_t transport_write(transport_t *transport, 
                                                const uint8_t *data, 
@@ -438,6 +451,11 @@ static inline transport_err_t transport_get_option(transport_t *transport,
 }
 
 /** @} */
+
+/**
+ * @brief Helper macro to set default timeout if zero
+ */
+#define SET_DEFAULT_TIMEOUT(timeout, default_val) ((timeout) == 0 ? (default_val) : (timeout))
 
 /**
  * @brief Converts error code to string

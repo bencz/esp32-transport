@@ -212,12 +212,20 @@ static transport_err_t usb_init(transport_t *self, const void *config)
         return TRANSPORT_ERR_ALREADY_INITIALIZED;
     }
     
+    // Create base mutex for thread safety
+    transport->base.mutex = xSemaphoreCreateMutex();
+    if (transport->base.mutex == NULL) {
+        return TRANSPORT_ERR_NO_MEM;
+    }
+    
     if (config != NULL) {
         memcpy(&transport->config, config, sizeof(usb_transport_config_t));
     }
     
     usb_internal_t *internal = calloc(1, sizeof(usb_internal_t));
     if (internal == NULL) {
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_NO_MEM;
     }
     
@@ -228,6 +236,8 @@ static transport_err_t usb_init(transport_t *self, const void *config)
         if (internal->mutex) vSemaphoreDelete(internal->mutex);
         if (internal->rx_sem) vSemaphoreDelete(internal->rx_sem);
         free(internal);
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_NO_MEM;
     }
     
@@ -241,6 +251,8 @@ static transport_err_t usb_init(transport_t *self, const void *config)
         vSemaphoreDelete(internal->mutex);
         vSemaphoreDelete(internal->rx_sem);
         free(internal);
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_NO_MEM;
     }
     
@@ -278,6 +290,12 @@ static transport_err_t usb_deinit(transport_t *self)
     free(internal);
     transport->internal = NULL;
     s_transport_instance = NULL;
+    
+    // Delete base mutex
+    if (transport->base.mutex) {
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
+    }
     
     transport_set_state(self, TRANSPORT_STATE_UNINITIALIZED);
     

@@ -95,12 +95,20 @@ static transport_err_t wifi_tcp_init(transport_t *self, const void *config)
         return TRANSPORT_ERR_ALREADY_INITIALIZED;
     }
     
+    // Create base mutex for thread safety
+    transport->base.mutex = xSemaphoreCreateMutex();
+    if (transport->base.mutex == NULL) {
+        return TRANSPORT_ERR_NO_MEM;
+    }
+    
     if (config != NULL) {
         memcpy(&transport->config, config, sizeof(wifi_tcp_config_t));
     }
     
     wifi_tcp_internal_t *internal = calloc(1, sizeof(wifi_tcp_internal_t));
     if (internal == NULL) {
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_NO_MEM;
     }
     
@@ -111,6 +119,8 @@ static transport_err_t wifi_tcp_init(transport_t *self, const void *config)
         if (internal->mutex) vSemaphoreDelete(internal->mutex);
         if (internal->event_group) vEventGroupDelete(internal->event_group);
         free(internal);
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_NO_MEM;
     }
     
@@ -152,6 +162,12 @@ static transport_err_t wifi_tcp_deinit(transport_t *self)
     
     free(internal);
     transport->internal = NULL;
+    
+    // Delete base mutex
+    if (transport->base.mutex) {
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
+    }
     
     transport_set_state(self, TRANSPORT_STATE_UNINITIALIZED);
     

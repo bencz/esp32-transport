@@ -82,7 +82,11 @@ void transport_emit_event(transport_t *transport, const transport_event_t *event
     }
     
     if (transport->event_callback != NULL) {
-        transport->event_callback(transport, event, transport->user_data);
+        // Protect callback invocation with mutex
+        if (xSemaphoreTake(transport->mutex, portMAX_DELAY) == pdTRUE) {
+            transport->event_callback(transport, event, transport->user_data);
+            xSemaphoreGive(transport->mutex);
+        }
     }
 }
 
@@ -98,7 +102,11 @@ void transport_set_state(transport_t *transport, transport_state_t new_state)
         return;
     }
     
-    transport->state = new_state;
+    // Protect state change with mutex
+    if (xSemaphoreTake(transport->mutex, portMAX_DELAY) == pdTRUE) {
+        transport->state = new_state;
+        xSemaphoreGive(transport->mutex);
+    }
     
     transport_event_t event = {
         .type = TRANSPORT_EVENT_STATE_CHANGED,

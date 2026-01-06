@@ -371,6 +371,12 @@ static transport_err_t bt_spp_init(transport_t *self, const void *config)
         return TRANSPORT_ERR_ALREADY_INITIALIZED;
     }
     
+    // Create base mutex for thread safety
+    transport->base.mutex = xSemaphoreCreateMutex();
+    if (transport->base.mutex == NULL) {
+        return TRANSPORT_ERR_NO_MEM;
+    }
+    
     if (config != NULL) {
         memcpy(&transport->config, config, sizeof(bt_spp_config_t));
     }
@@ -415,6 +421,8 @@ static transport_err_t bt_spp_init(transport_t *self, const void *config)
     
     transport_err_t err = init_bluetooth_stack(transport);
     if (err != TRANSPORT_OK) {
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         vRingbufferDelete(internal->rx_ringbuf);
         vSemaphoreDelete(internal->mutex);
         vSemaphoreDelete(internal->write_sem);
@@ -434,6 +442,8 @@ static transport_err_t bt_spp_init(transport_t *self, const void *config)
     
     if (!internal->initialized) {
         deinit_bluetooth_stack();
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         vRingbufferDelete(internal->rx_ringbuf);
         vSemaphoreDelete(internal->mutex);
         vSemaphoreDelete(internal->write_sem);
@@ -586,6 +596,10 @@ static transport_err_t bt_spp_write(transport_t *self, const uint8_t *data, size
     bt_spp_transport_t *transport = (bt_spp_transport_t *)self;
     bt_spp_internal_t *internal = (bt_spp_internal_t *)transport->internal;
     
+    if (internal == NULL) {
+        return TRANSPORT_ERR_NOT_INITIALIZED;
+    }
+    
     if (!internal->connected) {
         return TRANSPORT_ERR_NOT_CONNECTED;
     }
@@ -631,6 +645,10 @@ static transport_err_t bt_spp_read(transport_t *self, uint8_t *buffer, size_t le
     bt_spp_transport_t *transport = (bt_spp_transport_t *)self;
     bt_spp_internal_t *internal = (bt_spp_internal_t *)transport->internal;
     
+    if (internal == NULL) {
+        return TRANSPORT_ERR_NOT_INITIALIZED;
+    }
+    
     if (!internal->connected) {
         return TRANSPORT_ERR_NOT_CONNECTED;
     }
@@ -664,6 +682,10 @@ static transport_err_t bt_spp_available(transport_t *self, size_t *available)
     bt_spp_transport_t *transport = (bt_spp_transport_t *)self;
     bt_spp_internal_t *internal = (bt_spp_internal_t *)transport->internal;
     
+    if (internal == NULL) {
+        return TRANSPORT_ERR_NOT_INITIALIZED;
+    }
+    
     if (internal->rx_ringbuf == NULL) {
         *available = 0;
         return TRANSPORT_ERR_NOT_INITIALIZED;
@@ -684,6 +706,10 @@ static transport_err_t bt_spp_flush(transport_t *self)
     
     bt_spp_transport_t *transport = (bt_spp_transport_t *)self;
     bt_spp_internal_t *internal = (bt_spp_internal_t *)transport->internal;
+    
+    if (internal == NULL) {
+        return TRANSPORT_ERR_NOT_INITIALIZED;
+    }
     
     if (internal->rx_ringbuf == NULL) {
         return TRANSPORT_ERR_NOT_INITIALIZED;
@@ -720,6 +746,10 @@ static transport_err_t bt_spp_get_info(transport_t *self, char *info, size_t len
     
     bt_spp_transport_t *transport = (bt_spp_transport_t *)self;
     bt_spp_internal_t *internal = (bt_spp_internal_t *)transport->internal;
+    
+    if (internal == NULL) {
+        return TRANSPORT_ERR_NOT_INITIALIZED;
+    }
     
     char addr_str[18] = "Not connected";
     if (internal != NULL && internal->connected) {

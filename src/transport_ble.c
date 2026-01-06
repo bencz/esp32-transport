@@ -460,12 +460,20 @@ static transport_err_t ble_init(transport_t *self, const void *config)
         return TRANSPORT_ERR_ALREADY_INITIALIZED;
     }
     
+    // Create base mutex for thread safety
+    transport->base.mutex = xSemaphoreCreateMutex();
+    if (transport->base.mutex == NULL) {
+        return TRANSPORT_ERR_NO_MEM;
+    }
+    
     if (config != NULL) {
         memcpy(&transport->config, config, sizeof(ble_config_t));
     }
     
     ble_internal_t *internal = calloc(1, sizeof(ble_internal_t));
     if (internal == NULL) {
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_NO_MEM;
     }
     
@@ -481,6 +489,8 @@ static transport_err_t ble_init(transport_t *self, const void *config)
         if (internal->connect_sem) vSemaphoreDelete(internal->connect_sem);
         if (internal->event_group) vEventGroupDelete(internal->event_group);
         free(internal);
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_NO_MEM;
     }
     
@@ -496,6 +506,8 @@ static transport_err_t ble_init(transport_t *self, const void *config)
         vSemaphoreDelete(internal->connect_sem);
         vEventGroupDelete(internal->event_group);
         free(internal);
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_NO_MEM;
     }
     
@@ -512,6 +524,8 @@ static transport_err_t ble_init(transport_t *self, const void *config)
         free(internal);
         transport->internal = NULL;
         s_transport_instance = NULL;
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return err;
     }
     
@@ -531,6 +545,8 @@ static transport_err_t ble_init(transport_t *self, const void *config)
         free(internal);
         transport->internal = NULL;
         s_transport_instance = NULL;
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
         return TRANSPORT_ERR_TIMEOUT;
     }
     
@@ -572,6 +588,12 @@ static transport_err_t ble_deinit(transport_t *self)
     free(internal);
     transport->internal = NULL;
     s_transport_instance = NULL;
+    
+    // Delete base mutex
+    if (transport->base.mutex) {
+        vSemaphoreDelete(transport->base.mutex);
+        transport->base.mutex = NULL;
+    }
     
     transport_set_state(self, TRANSPORT_STATE_UNINITIALIZED);
     
@@ -638,6 +660,10 @@ static transport_err_t ble_write(transport_t *self, const uint8_t *data, size_t 
     
     ble_transport_t *transport = (ble_transport_t *)self;
     ble_internal_t *internal = (ble_internal_t *)transport->internal;
+    
+    if (internal == NULL) {
+        return TRANSPORT_ERR_NOT_INITIALIZED;
+    }
     
     if (self->state != TRANSPORT_STATE_CONNECTED) {
         return TRANSPORT_ERR_NOT_CONNECTED;
